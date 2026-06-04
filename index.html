@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chronicles of the Abyss — AI Dungeon Master</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inconsolata:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════
+     SETUP SCREEN
+══════════════════════════════════════════════════ -->
+<div id="setup-screen">
+  <div class="setup-card">
+    <div class="setup-ornament">⁂</div>
+    <h1>Chronicles of the Abyss</h1>
+    <p class="tagline">AI-Powered Dungeon Master</p>
+    <div class="setup-divider"></div>
+
+    <!-- LLM CONFIG SECTION -->
+    <div class="llm-config-box">
+      <div class="llm-config-title">⚙ Connect Your AI Engine</div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="llm-provider">LLM Provider</label>
+          <select id="llm-provider">
+            <option value="groq">⚡ Groq — Free tier available</option>
+            <option value="claude">Anthropic Claude</option>
+            <option value="openai">OpenAI GPT</option>
+            <option value="gemini">Google Gemini</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="ollama">Local (Ollama)</option>
+            <option value="custom">Custom Endpoint</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="llm-model">Model</label>
+          <select id="llm-model">
+            <option value="claude-sonnet-4-20250514">claude-sonnet-4-20250514</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field" id="api-key-field">
+        <label for="llm-apikey">API Key <span class="key-note">(stored in browser only, never sent elsewhere)</span></label>
+        <div class="key-input-wrap">
+          <input type="password" id="llm-apikey" placeholder="Paste your API key…" autocomplete="off" />
+          <button class="toggle-key-btn" onclick="toggleKeyVisibility()" title="Show/hide key">👁</button>
+        </div>
+      </div>
+
+      <div class="field" id="custom-url-field" style="display:none;">
+        <label for="llm-url">Endpoint URL</label>
+        <input type="text" id="llm-url" placeholder="http://localhost:11434" />
+      </div>
+
+      <div id="llm-status" class="llm-status idle">○ Not connected — fill in your key and test</div>
+      <div id="groq-tip" class="groq-tip">
+        💡 <strong>Groq free tier:</strong> get a key at
+        <a href="https://console.groq.com" target="_blank" rel="noopener">console.groq.com</a>
+        — no credit card required. Key expires in 7 days on trial plans.
+      </div>
+      <button class="test-btn" onclick="testConnection()">Test Connection</button>
+    </div>
+
+    <div class="setup-divider" style="margin:1.4rem 0 1.2rem;"></div>
+
+    <!-- CHARACTER SETUP -->
+    <div class="field-row">
+      <div class="field">
+        <label for="hero-name">Your name</label>
+        <input type="text" id="hero-name" placeholder="Aldric…" maxlength="24" />
+      </div>
+      <div class="field">
+        <label for="hero-bg">Background</label>
+        <select id="hero-bg">
+          <option value="Noble">Noble</option>
+          <option value="Outlander">Outlander</option>
+          <option value="Criminal">Criminal</option>
+          <option value="Sage">Sage</option>
+          <option value="Soldier">Soldier</option>
+          <option value="Acolyte">Acolyte</option>
+        </select>
+      </div>
+    </div>
+
+    <p class="setup-section-label">Choose your class</p>
+    <div class="class-grid">
+      <button class="class-btn selected" data-class="Fighter" data-hp="60" data-atk="18">
+        <span class="class-icon">⚔️</span>Fighter
+      </button>
+      <button class="class-btn" data-class="Wizard" data-hp="36" data-atk="12">
+        <span class="class-icon">🔮</span>Wizard
+      </button>
+      <button class="class-btn" data-class="Rogue" data-hp="44" data-atk="15">
+        <span class="class-icon">🗡️</span>Rogue
+      </button>
+      <button class="class-btn" data-class="Cleric" data-hp="48" data-atk="14">
+        <span class="class-icon">✝️</span>Cleric
+      </button>
+      <button class="class-btn" data-class="Ranger" data-hp="52" data-atk="16">
+        <span class="class-icon">🏹</span>Ranger
+      </button>
+      <button class="class-btn" data-class="Warlock" data-hp="40" data-atk="16">
+        <span class="class-icon">👁️</span>Warlock
+      </button>
+    </div>
+
+    <p class="setup-section-label" style="margin-top:1rem;">Adventure setting</p>
+    <div class="field" style="margin-bottom:1.4rem;">
+      <select id="campaign-type" style="width:100%;">
+        <option value="dungeon">Dark Dungeon — Cursed ruins beneath a dead city</option>
+        <option value="forest">Ancient Forest — A cursed elven woodland</option>
+        <option value="sea">Sunken Empire — Ruins beneath a haunted sea</option>
+        <option value="mountain">Frozen Citadel — A dragon's peak fortress</option>
+        <option value="city">Shadow City — Intrigue in a corrupt metropolis</option>
+      </select>
+    </div>
+
+    <button id="begin-btn" onclick="beginGame()" disabled>Connect an LLM to Begin</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     MAIN GAME UI
+══════════════════════════════════════════════════ -->
+<div id="app" style="display:none;">
+
+  <header>
+    <h1>Chronicles of the Abyss</h1>
+    <div class="header-right">
+      <span class="subtitle">Dungeon Master · AI Edition</span>
+      <button class="settings-btn" onclick="openSettings()" title="LLM Settings">⚙</button>
+    </div>
+  </header>
+
+  <div id="char-bar">
+    <div class="stat-chip"><span class="label">Hero</span><span class="val" id="ui-name">—</span></div>
+    <div class="stat-chip"><span class="label">Class</span><span class="val" id="ui-class">—</span></div>
+    <div class="stat-chip hp"><span class="label">HP</span><span class="val" id="ui-hp">—</span></div>
+    <div class="stat-chip"><span class="label">Level</span><span class="val" id="ui-level">1</span></div>
+    <div class="stat-chip xp"><span class="label">XP</span><span class="val" id="ui-xp">0</span></div>
+    <div class="stat-chip"><span class="label">Gold</span><span class="val" id="ui-gold">0</span></div>
+    <div class="stat-chip provider-chip"><span class="label">LLM</span><span class="val" id="ui-provider">—</span></div>
+  </div>
+
+  <div id="main">
+
+    <!-- Story panel -->
+    <div id="story-panel">
+      <div id="scroll-area"></div>
+
+      <div id="quick-actions">
+        <button class="quick-btn" onclick="quickAction('Look around carefully')">👁 Look</button>
+        <button class="quick-btn" onclick="quickAction('Search for traps or hidden doors')">🔍 Search</button>
+        <button class="quick-btn" onclick="quickAction('Attack the nearest enemy')">⚔️ Attack</button>
+        <button class="quick-btn" onclick="quickAction('Try to talk or negotiate')">💬 Talk</button>
+        <button class="quick-btn" onclick="quickAction('Use a healing item or spell')">💊 Heal</button>
+        <button class="quick-btn" onclick="quickAction('Retreat and fall back')">🏃 Retreat</button>
+        <button class="quick-btn" onclick="quickAction('Check my inventory and status')">🎒 Inventory</button>
+      </div>
+
+      <div id="input-area">
+        <textarea id="action-input" placeholder="Describe your action… (Enter to send, Shift+Enter for new line)" rows="1"></textarea>
+        <button id="send-btn" onclick="sendAction()">Act ↗</button>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div id="sidebar">
+      <div class="panel" id="dice-panel">
+        <div class="panel-title">Dice Roller</div>
+        <button class="dice-btn" onclick="rollDice(20)">🎲 d20</button>
+        <button class="dice-btn" onclick="rollDice(12)">🎲 d12</button>
+        <button class="dice-btn" onclick="rollDice(10)">🎲 d10</button>
+        <button class="dice-btn" onclick="rollDice(6)">🎲 d6</button>
+        <button class="dice-btn" onclick="rollDice(4)">🎲 d4</button>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Inventory</div>
+        <ul id="inventory-list"></ul>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Quests</div>
+        <ul id="quests-list"></ul>
+      </div>
+    </div>
+
+  </div><!-- /#main -->
+</div><!-- /#app -->
+
+<!-- ══════════════════════════════════════════════════
+     IN-GAME SETTINGS MODAL
+══════════════════════════════════════════════════ -->
+<div id="settings-modal" style="display:none;">
+  <div class="modal-backdrop" onclick="closeSettings()"></div>
+  <div class="modal-card">
+    <div class="modal-header">
+      <span>⚙ LLM Settings</span>
+      <button class="modal-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field" style="margin-bottom:0.9rem;">
+        <label>Provider</label>
+        <select id="m-provider"></select>
+      </div>
+      <div class="field" style="margin-bottom:0.9rem;">
+        <label>Model</label>
+        <select id="m-model"></select>
+      </div>
+      <div class="field" id="m-apikey-field" style="margin-bottom:0.9rem;">
+        <label>API Key</label>
+        <div class="key-input-wrap">
+          <input type="password" id="m-apikey" placeholder="Your API key…" />
+          <button class="toggle-key-btn" onclick="toggleModalKeyVisibility()">👁</button>
+        </div>
+      </div>
+      <div class="field" id="m-url-field" style="display:none;margin-bottom:0.9rem;">
+        <label>Endpoint URL</label>
+        <input type="text" id="m-url" placeholder="http://localhost:11434" />
+      </div>
+      <div id="m-status" class="llm-status idle">○ Idle</div>
+      <div style="display:flex;gap:0.6rem;margin-top:1rem;">
+        <button class="test-btn" onclick="testConnectionModal()" style="flex:1;">Test</button>
+        <button class="test-btn" onclick="saveSettings()" style="flex:1;background:rgba(201,162,39,0.18);border-color:rgba(201,162,39,0.5);color:var(--gold);">Save &amp; Apply</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
